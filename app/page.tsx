@@ -1069,8 +1069,7 @@ for (
       token.tokenBalance || "0"
     );
 
-  if (rawBalance <= 0n)
-    continue;
+if (rawBalance <= BigInt(0))    continue;
 
   const formatted =
     ethers.formatUnits(
