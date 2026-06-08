@@ -1095,8 +1095,7 @@ if (rawBalance <= BigInt(0))    continue;
 );
 
 if (
-  rawBalance <= 0n
-) {
+rawBalance <= BigInt(0)) {
   continue;
 }
   fastTokens.push({
@@ -1293,8 +1292,7 @@ for (
       );
 
     if (
-      rawBalance <= 0n
-    ) {
+rawBalance <= BigInt(0)    ) {
       continue;
     }
 
