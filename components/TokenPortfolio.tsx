@@ -4,7 +4,7 @@ type Token = {
   balance: string;
   price?: number;
   usdValue?: number;
-  name?: string;
+  name?: string | null;
 };
 function formatBalance(
   value: number

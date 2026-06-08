@@ -1,7 +1,8 @@
 import {
   Alchemy,
   Network,
-  TokenBalanceType
+  TokenBalanceType,
+  AssetTransfersCategory,
 } from "alchemy-sdk";
 const config = {
   apiKey:
@@ -17,7 +18,7 @@ export async function fetchWalletHistory(
 ) {
 
   try {
-alchemy.portfolio.getTokensByWallet
+
     const transfers =
       await alchemy.core.getAssetTransfers({
 
@@ -26,11 +27,11 @@ alchemy.portfolio.getTokensByWallet
         fromAddress: address,
 
         category: [
-          "external",
-          "erc20",
-          "erc721",
-          "erc1155",
-        ],
+  AssetTransfersCategory.EXTERNAL,
+  AssetTransfersCategory.ERC20,
+  AssetTransfersCategory.ERC721,
+  AssetTransfersCategory.ERC1155,
+],
 
         withMetadata: true,
 
@@ -47,11 +48,11 @@ alchemy.portfolio.getTokensByWallet
         toAddress: address,
 
         category: [
-          "external",
-          "erc20",
-          "erc721",
-          "erc1155",
-        ],
+  AssetTransfersCategory.EXTERNAL,
+  AssetTransfersCategory.ERC20,
+  AssetTransfersCategory.ERC721,
+  AssetTransfersCategory.ERC1155,
+],
 
         withMetadata: true,
 
@@ -200,16 +201,14 @@ export async function fetchWalletTokens(
 
     do {
 
-      const response =
-        await alchemy.core.getTokenBalances(
-          address,
-          {
-            type:
-              TokenBalanceType.ERC20,
-            pageKey,
-          }
-        );
-
+      const response: any =
+  await alchemy.core.getTokenBalances(
+    address,
+    {
+      type: TokenBalanceType.ERC20,
+      pageKey,
+    }
+  );
       allTokens.push(
         ...response.tokenBalances
       );
@@ -277,8 +276,9 @@ export async function fetchHistoricalTokens(
 
         fromBlock: "0x0",
 
-        category: ["erc20"],
-
+category: [
+  AssetTransfersCategory.ERC20,
+],
         withMetadata: true,
 
       });
@@ -290,8 +290,9 @@ export async function fetchHistoricalTokens(
 
         fromBlock: "0x0",
 
-        category: ["erc20"],
-
+category: [
+  AssetTransfersCategory.ERC20,
+],
         withMetadata: true,
 
       });
@@ -356,8 +357,8 @@ export async function testPortfolio(
         {
           address,
           networks: [
-            "eth-mainnet"
-          ]
+  Network.ETH_MAINNET
+]
         }
       ],
       true,
@@ -393,7 +394,7 @@ export async function testPortfolioRaw(
             {
               address,
               networks: [
-                "eth-mainnet",
+                Network.ETH_MAINNET
               ],
             },
           ],

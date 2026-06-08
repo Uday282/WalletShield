@@ -1,5 +1,8 @@
-import { Alchemy, Network }
-from "alchemy-sdk";
+import {
+  Alchemy,
+  Network,
+  AlchemySubscription
+} from "alchemy-sdk";
 
 const config = {
 
@@ -28,16 +31,13 @@ export function startLiveMonitoring(
     walletAddress.toLowerCase();
 
   alchemy.ws.on(
+  {
+    method:
+      AlchemySubscription.PENDING_TRANSACTIONS,
 
-    {
-
-      method:
-        "alchemy_pendingTransactions",
-
-      fromAddress:
-        address,
-
-    },
+    fromAddress:
+      address,
+  },
 
     (tx) => {
 
