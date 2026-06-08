@@ -1,18 +1,15 @@
 type Props = {
-  connectedTokens: number;
-
-  activeApprovals: number;
-
-  criticalRisks: number;
-
-  highRisks: number;
+  tokensLength: number;
+  approvalsLength: number;
+  criticalApprovals: number;
+  highRiskApprovals: number;
 };
 
 export default function WalletExposure({
-  connectedTokens,
-  activeApprovals,
-  criticalRisks,
-  highRisks,
+  tokensLength,
+  approvalsLength,
+  criticalApprovals,
+  highRiskApprovals,
 }: Props) {
 
   return (
@@ -53,7 +50,7 @@ export default function WalletExposure({
 
           <p className="text-3xl font-bold text-white">
 
-            {connectedTokens}
+            {tokensLength}
 
           </p>
 
@@ -69,7 +66,7 @@ export default function WalletExposure({
 
           <p className="text-3xl font-bold text-white">
 
-            {activeApprovals}
+            {approvalsLength}
 
           </p>
 
@@ -85,7 +82,7 @@ export default function WalletExposure({
 
           <p className="text-3xl font-bold text-red-400">
 
-            {criticalRisks}
+            {criticalApprovals}
 
           </p>
 
@@ -101,7 +98,7 @@ export default function WalletExposure({
 
           <p className="text-3xl font-bold text-yellow-400">
 
-            {highRisks}
+            {highRiskApprovals}
 
           </p>
 
