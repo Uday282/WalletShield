@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "^2.2.11",
+    "@supabase/supabase-js": "^2.108.0",
     "@tanstack/react-query": "^5.100.13",
     "alchemy-sdk": "^3.6.5",
     "ethers": "^6.16.0",

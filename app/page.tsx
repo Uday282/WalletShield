@@ -1,5 +1,7 @@
 "use client";
 
+import { supabase } from "@/lib/supabase";
+
 import TokenSecurityCard
 from "@/components/TokenSecurityCard";
 
@@ -444,7 +446,9 @@ const [
 
 const [alerts, setAlerts] =
   useState<any[]>([]);
-
+const [platformStats,
+  setPlatformStats] =
+  useState<any>(null);
   
   const [
   walletReputation,
@@ -592,6 +596,23 @@ const [
   fetchBalance();
 
 }, [activeWallet]);
+useEffect(() => {
+
+  async function loadStats() {
+
+    const { data } =
+      await supabase
+        .from("stats")
+        .select("*")
+        .eq("id", 1)
+        .single();
+
+    setPlatformStats(data);
+  }
+
+  loadStats();
+
+}, []);
 useEffect(() => {
 
   const ETH_PRICE = 2500;
@@ -1733,7 +1754,7 @@ function addWalletToWatchlist() {
 
   setWatchWalletInput("");
 }
-function analyzeWallet() {
+async function analyzeWallet() {
 
   if (
     !walletInput ||
@@ -1743,8 +1764,33 @@ function analyzeWallet() {
   setActiveWallet(
     walletInput
   );
-}
 
+  const {
+    data: statsData
+  } = await supabase
+    .from("stats")
+    .select("wallets_analyzed")
+    .eq("id", 1)
+    .single();
+
+  if (statsData) {
+
+    const newCount =
+      statsData.wallets_analyzed + 1;
+
+    await supabase
+      .from("stats")
+      .update({
+        wallets_analyzed: newCount,
+      })
+      .eq("id", 1);
+
+    setPlatformStats((prev: any) => ({
+      ...prev,
+      wallets_analyzed: newCount,
+    }));
+  }
+}
   async function revokeApproval(
   tokenAddress: string,
   spenderAddress: string
@@ -1860,7 +1906,57 @@ const drainAnalysis =
     );
 
   }, [threatProfile]);
+useEffect(() => {
 
+  async function updateThreatStats() {
+
+    if (!activeWallet) return;
+
+    if (
+      threatProfile.level !== "SUSPICIOUS" &&
+      threatProfile.level !== "HIGH_RISK" &&
+      threatProfile.level !== "MALICIOUS"
+    ) {
+      return;
+    }
+
+    const { data } = await supabase
+      .from("stats")
+      .select("*")
+      .eq("id", 1)
+      .single();
+
+    if (!data) return;
+
+    const updates: any = {
+      threats_detected:
+        (data.threats_detected || 0) + 1,
+    };
+
+    if (
+      threatProfile.level === "MALICIOUS"
+    ) {
+      updates.malicious_wallets =
+        (data.malicious_wallets || 0) + 1;
+    }
+
+    await supabase
+      .from("stats")
+      .update(updates)
+      .eq("id", 1);
+
+    setPlatformStats((prev: any) => ({
+      ...prev,
+      ...updates,
+    }));
+  }
+
+  updateThreatStats();
+
+}, [
+  threatProfile.level,
+  activeWallet,
+]);
   const threatActions =
   useMemo(() => {
 
@@ -2244,18 +2340,47 @@ if (
 
       </div>
 
-      <h1 className="text-4xl font-bold mb-3">
-
-        WalletShield AI
+<h1 className="text-4xl font-bold mb-3">        WalletShield AI
 
       </h1>
 
-      <p className="text-zinc-400 text-lg max-w-xl">
-
+<p className="text-zinc-400 text-xl max-w-xl leading-relaxed">
         Real-time multi-chain wallet security intelligence platform.
 
       </p>
+<div className="grid grid-cols-3 gap-4 mt-8 max-w-2xl">
 
+  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+    <p className="text-3xl font-bold text-green-400">
+      {platformStats?.wallets_analyzed || 0}
+    </p>
+
+    <p className="text-zinc-500 text-sm mt-1">
+      Wallets Analyzed
+    </p>
+  </div>
+
+  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+    <p className="text-3xl font-bold text-orange-400">
+      {platformStats?.threats_detected || 0}
+    </p>
+
+    <p className="text-zinc-500 text-sm mt-1">
+      Threats Detected
+    </p>
+  </div>
+
+  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+    <p className="text-3xl font-bold text-red-400">
+      {platformStats?.malicious_wallets || 0}
+    </p>
+
+    <p className="text-zinc-500 text-sm mt-1">
+      Malicious Wallets
+    </p>
+  </div>
+
+</div>
       <div className="mt-6">
 
   <ConnectButton />
