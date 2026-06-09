@@ -1,4 +1,5 @@
 "use client";
+
 import TokenSecurityCard
 from "@/components/TokenSecurityCard";
 
@@ -1552,8 +1553,8 @@ let protocol = null;
       spender
     );
 
-    currentThreat =
-  await checkThreatIntel(
+   currentThreat =
+  await checkWalletThreat(
     spender
   );
 
