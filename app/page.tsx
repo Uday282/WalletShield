@@ -1,7 +1,31 @@
 "use client";
-import { checkThreatIntel }
-from "@/lib/threatIntel";
+import TokenSecurityCard
+from "@/components/TokenSecurityCard";
 
+import {
+  checkTokenSecurity
+} from "@/lib/tokenSecurity";
+
+import {
+  analyzeTokenRisk
+} from "@/lib/tokenRiskEngine";
+import {
+  generateThreatActions
+} from "@/lib/generateThreatActions";
+import {
+  generateThreatExplanation
+} from "@/lib/generateThreatExplanation";
+
+import {
+  buildThreatProfile
+} from "@/lib/buildThreatProfile";
+ import {
+  analyzeWalletThreat
+} from "@/lib/threatAnalysisService";
+
+import {
+  checkWalletThreat
+} from "@/lib/threatIntel";
 import ShareAnalysis from "@/components/ShareAnalysis";
 
 import TransactionHistory
@@ -392,6 +416,15 @@ const [
   tokenInput,
   setTokenInput,
 ] = useState("");
+const [
+  tokenSecurityResult,
+  setTokenSecurityResult,
+] = useState<any>(null);
+
+const [
+  tokenRiskResult,
+  setTokenRiskResult,
+] = useState<any>(null);
 
 const [
   tokenAnalysis,
@@ -417,6 +450,10 @@ const [alerts, setAlerts] =
   setWalletReputation,
 ] = useState<any>(null);
 
+const [
+  threatIntel,
+  setThreatIntel,
+] = useState<any>(null);
 
 
   const [threatFeed, setThreatFeed] =
@@ -662,6 +699,37 @@ useEffect(() => {
 
 }, [activeWallet]);
 
+useEffect(() => {
+
+  async function loadThreatIntel() {
+
+    if (!activeWallet)
+      return;
+
+    try {
+
+     
+const result =
+  await analyzeWalletThreat(
+    activeWallet
+  );
+
+
+      
+
+      setThreatIntel(
+        result
+      );
+
+    } catch (err) {
+
+      console.log(err);
+    }
+  }
+
+  loadThreatIntel();
+
+}, [activeWallet]);
 useEffect(() => {
 
   if (
@@ -1562,18 +1630,57 @@ function handleContractAnalysis() {
     result
   );
 }
-function handleTokenAnalysis() {
+async function handleTokenAnalysis() {
 
-  const result =
+  const localResult =
     analyzeToken(
       tokenInput
     );
 
   setTokenAnalysis(
-    result
+    localResult
   );
-}
 
+  const goPlusResult =
+    await checkTokenSecurity(
+      tokenInput
+    );
+
+  console.log(
+    "TOKEN SECURITY:",
+    goPlusResult
+  );
+
+  setTokenSecurityResult(
+    goPlusResult
+  );
+  const tokenData =
+  goPlusResult?.result?.[
+    tokenInput.toLowerCase()
+  ];
+
+console.log(
+  "TOKEN DATA:",
+  tokenData
+);
+
+const riskResult =
+  analyzeTokenRisk(
+    tokenData
+  );
+
+console.log(
+  "TOKEN RISK:",
+  riskResult
+);
+console.log(
+  "TOKEN FINDINGS:",
+  riskResult.findings
+);
+setTokenRiskResult(
+  riskResult
+);
+}
 function handleCopilotAsk() {
 
   const result =
@@ -1717,6 +1824,53 @@ const drainAnalysis =
     activities,
   ]);
 
+  const threatProfile =
+  useMemo(() => {
+
+    return buildThreatProfile({
+
+      threatIntel,
+
+      walletReputation,
+
+      walletClassification,
+
+      drainAnalysis,
+
+    });
+
+  }, [
+
+    threatIntel,
+
+    walletReputation,
+
+    walletClassification,
+
+    drainAnalysis,
+
+  ]);
+
+  const threatExplanation =
+  useMemo(() => {
+
+    return generateThreatExplanation(
+      threatProfile
+    );
+
+  }, [threatProfile]);
+
+  const threatActions =
+  useMemo(() => {
+
+    return generateThreatActions(
+      threatProfile
+    );
+
+  }, [threatProfile]);
+const hasThreatAnalysis =
+  threatProfile.findings.length > 0;
+  
   const portfolioAnalysis =
   useMemo(() => {
 
@@ -1860,7 +2014,42 @@ const drainAnalysis =
 generatedAlerts.push(
   ...approvalThreats
 );
+if (
+  threatProfile.level ===
+  "HIGH_RISK"
+) {
 
+  generatedAlerts.unshift({
+
+    severity: "High",
+
+    title:
+      "Phishing Activity Detected",
+
+    message:
+     threatProfile.findings[0] ||
+"Threat intelligence warning detected.",
+
+  });
+}
+
+if (
+  threatProfile.level ===
+  "MALICIOUS"
+) {
+
+  generatedAlerts.unshift({
+
+    severity: "Critical",
+
+    title:
+      "Malicious Wallet Detected",
+
+    message:
+      "Avoid interacting with this wallet.",
+
+  });
+}
   if (
     drainAnalysis.threatLevel ===
     "Critical"
@@ -1933,37 +2122,71 @@ generatedAlerts.push(
 
   useEffect(() => {
 
-    setRiskFactors(
-      riskResult.risks
-    );
+  setRiskFactors(
+    riskResult.risks
+  );
 
-    if (
-      riskResult.criticalApprovals > 0
-    ) {
+  //
+  // THREAT INTEL HAS HIGHEST PRIORITY
+  //
 
-      setLiveProtectionStatus(
-        "Critical Threat"
-      );
+  if (
+    threatProfile.level ===
+    "MALICIOUS"
+  ) {
 
-      return;
-    }
+   setLiveProtectionStatus(
+  "Malicious"
+);
+    return;
+  }
 
-    if (
-      riskResult.highRiskApprovals > 0
-    ) {
+  if (
+  threatProfile.level ===
+  "HIGH_RISK"
+) {
 
-      setLiveProtectionStatus(
-        "Warning"
-      );
+  setLiveProtectionStatus(
+    "High Risk"
+  );
 
-      return;
-    }
+  return;
+}
+
+  //
+  // APPROVAL CHECKS
+  //
+
+  if (
+    riskResult.criticalApprovals > 0
+  ) {
 
     setLiveProtectionStatus(
-      "Protected"
+      "Critical Threat"
     );
 
-  }, [riskResult]);
+    return;
+  }
+
+  if (
+    riskResult.highRiskApprovals > 0
+  ) {
+
+    setLiveProtectionStatus(
+      "Warning"
+    );
+
+    return;
+  }
+
+  setLiveProtectionStatus(
+    "Protected"
+  );
+
+}, [
+  riskResult,
+  threatProfile
+]);
 
   return (
 
@@ -1977,11 +2200,46 @@ generatedAlerts.push(
 
         <div className="h-3 w-3 rounded-full bg-green-400 animate-pulse" />
 
-        <p className="text-green-400 text-sm uppercase tracking-[0.2em]">
+<p
+  className={`text-sm uppercase tracking-[0.2em]
+  ${
+    threatProfile.level === "SAFE"
+      ? "text-green-400"
+      : threatProfile.level === "SUSPICIOUS"
+      ? "text-yellow-400"
+      : threatProfile.level === "HIGH_RISK"
+      ? "text-orange-400"
+      : "text-red-400"
+  }`}
+>
+  {!activeWallet
+  ? "🛡️ READY FOR ANALYSIS"
+  : threatProfile.findings.some(
+      (f) =>
+        f.toLowerCase().includes(
+          "phishing"
+        )
+    )
+  ? "🚨 PHISHING WALLET DETECTED"
+  : threatProfile.findings.some(
+      (f) =>
+        f.toLowerCase().includes(
+          "sanction"
+        )
+    )
+  ? "🚨 SANCTIONED WALLET DETECTED"
+  : threatProfile.level ===
+    "MALICIOUS"
+  ? "🚨 MALICIOUS WALLET DETECTED"
+  : threatProfile.level ===
+    "HIGH_RISK"
+  ? "🚨 HIGH RISK WALLET"
+  : threatProfile.level ===
+    "SUSPICIOUS"
+  ? "⚠️ SUSPICIOUS WALLET"
+  : "🟢 SAFE WALLET"}
 
-          Wallet Protected
-
-        </p>
+</p>
 
       </div>
 
@@ -2054,15 +2312,25 @@ generatedAlerts.push(
 <div className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800 min-h-[110px]">
         <p className="text-zinc-500 text-sm mb-1">
 
-          Security Score
+  Risk Score
 
-        </p>
+</p>
 
-        <p className="text-3xl font-bold text-white">
+<p
+  className={`text-3xl font-bold ${
+    threatProfile.score >= 80
+      ? "text-red-400"
+      : threatProfile.score >= 60
+      ? "text-orange-400"
+      : threatProfile.score >= 30
+      ? "text-yellow-400"
+      : "text-green-400"
+  }`}
+>
 
-          {riskResult.score}/100
+  {threatProfile.score}/100
 
-        </p>
+</p>
 
       </div>
 
@@ -2296,34 +2564,253 @@ style={{
 
 </div>
 
-<div className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800 min-h-[110px]">
-  <p className="text-zinc-500 text-sm mb-1">
+<div className="bg-zinc-900 rounded-2xl p-5 border border-zinc-800">
 
-    Wallet Reputation
+  <p className="text-zinc-500 text-sm mb-4">
 
-  </p>
-
-  <p className="text-xl font-bold text-white">
-
-    {
-      walletReputation
-        ?.label || "Unknown"
-    }
+    Threat Summary
 
   </p>
 
-  <p className="text-sm text-zinc-500 mt-2">
+  <div className="space-y-4">
 
-    {
-      walletReputation
-        ?.description ||
-      "No intelligence found."
-    }
+    <div>
 
-  </p>
+      <p className="text-zinc-500 text-xs">
+
+        Threat Level
+
+      </p>
+
+      <p
+        className={`text-2xl font-bold ${
+          threatProfile.level === "SAFE"
+            ? "text-green-400"
+            : threatProfile.level === "SUSPICIOUS"
+            ? "text-yellow-400"
+            : threatProfile.level === "HIGH_RISK"
+            ? "text-orange-400"
+            : "text-red-400"
+        }`}
+      >
+        {threatProfile.level}
+      </p>
+
+    </div>
+
+    <div>
+
+      <p className="text-zinc-500 text-xs">
+
+        Primary Threat
+
+      </p>
+
+      <p className="font-semibold">
+
+        {threatProfile.findings[0] ||
+          "No threats detected"}
+      </p>
+
+    </div>
+
+    <div>
+
+      <p className="text-zinc-500 text-xs">
+
+        Recommendation
+
+      </p>
+
+      <p className="text-sm text-zinc-300">
+
+        {threatProfile.level ===
+        "SAFE"
+          ? "Wallet appears safe."
+          : threatProfile.level ===
+            "SUSPICIOUS"
+          ? "Exercise caution before interacting."
+          : threatProfile.level ===
+            "HIGH_RISK"
+          ? "Avoid sending funds or signing transactions."
+          : "Do not interact with this wallet."}
+
+      </p>
+
+    </div>
+
+  </div>
 
 </div>
+<div className="bg-zinc-900 rounded-2xl p-5 border border-zinc-800">
 
+  <div className="flex items-center justify-between mb-5">
+
+    <div>
+
+      <p className="text-zinc-500 text-sm">
+
+        Threat Intelligence
+
+      </p>
+
+      <p className="text-xs text-zinc-600 mt-1">
+
+        AI-powered wallet risk assessment
+
+      </p>
+
+    </div>
+
+    <div
+      className={`px-3 py-1 rounded-full text-xs font-semibold
+      ${
+        threatProfile.level === "SAFE"
+          ? "bg-green-500/20 text-green-400"
+          : threatProfile.level === "SUSPICIOUS"
+          ? "bg-yellow-500/20 text-yellow-400"
+          : threatProfile.level === "HIGH_RISK"
+          ? "bg-orange-500/20 text-orange-400"
+          : "bg-red-500/20 text-red-400"
+      }`}
+    >
+      {threatProfile.level}
+    </div>
+
+  </div>
+
+  <div className="mb-5">
+
+    <p className="text-zinc-500 text-sm mb-2">
+
+      Threat Score
+
+    </p>
+
+    <p className="text-4xl font-bold">
+
+      {threatProfile.score}/100
+
+    </p>
+
+    <div className="w-full h-2 bg-zinc-800 rounded-full mt-3">
+
+      <div
+  className="h-2 rounded-full"
+  style={{
+    width: `${threatProfile.score}%`,
+    backgroundColor:
+      threatProfile.score >= 80
+        ? "#ef4444"
+        : threatProfile.score >= 50
+        ? "#f97316"
+        : threatProfile.score >= 20
+        ? "#eab308"
+        : "#22c55e",
+  }}
+></div>
+
+    </div>
+
+  </div>
+
+  <div className="space-y-3 mb-5">
+
+    <div>
+
+      <p className="text-zinc-500 text-xs">
+
+        Reputation
+
+      </p>
+
+      <p className="font-semibold">
+
+        {threatProfile.reputation ||
+          "Unknown"}
+
+      </p>
+
+    </div>
+
+
+  </div>
+
+  <div>
+
+    <p className="text-zinc-500 text-sm mb-3">
+
+      Findings
+
+    </p>
+
+  
+    <div className="space-y-2">
+
+      {threatProfile.findings.map(
+        (
+          finding: string,
+          index: number
+        ) => (
+
+          <div
+            key={index}
+            className="
+              text-sm
+              bg-zinc-800
+              rounded-lg
+              px-3
+              py-2
+            "
+          >
+            ✓ {finding}
+          </div>
+
+        )
+      )}
+
+    </div>
+
+  </div>
+
+</div>
+<div className="mt-6">
+
+  <p className="text-zinc-500 text-sm mb-3">
+
+    Recommended Actions
+
+  </p>
+
+  <div className="space-y-2">
+
+    {threatActions.map(
+      (
+        action,
+        index
+      ) => (
+
+        <div
+          key={index}
+          className="
+            bg-zinc-800
+            rounded-xl
+            p-3
+            text-sm
+            text-zinc-300
+          "
+        >
+
+          ⚠ {action}
+
+        </div>
+
+      )
+    )}
+
+  </div>
+
+</div>
 <div className="bg-zinc-900 rounded-2xl p-5 border border-zinc-800">
 
   <p className="text-zinc-500 text-sm mb-1">
@@ -2534,15 +3021,18 @@ style={{
   />
 
   <WalletHealth
-    status={
-      drainAnalysis.threatLevel ===
-      "Critical"
-        ? "Critical"
-        : drainAnalysis.threatLevel ===
-          "High"
-        ? "Warning"
-        : "Healthy"
-    }
+  status={
+    threatProfile.level ===
+    "MALICIOUS"
+      ? "Malicious"
+      : threatProfile.level ===
+        "HIGH_RISK"
+      ? "High Risk"
+      : threatProfile.level ===
+        "SUSPICIOUS"
+      ? "Warning"
+      : "Healthy"
+  }
     uptime={
       monitoringUptime
     }
@@ -2695,22 +3185,36 @@ style={{
 
     token: (
 
-      <TokenRiskAnalyzer
-        tokenInput={
-          tokenInput
-        }
-        setTokenInput={
-          setTokenInput
-        }
-        result={
-          tokenAnalysis
-        }
-        onAnalyze={
-          handleTokenAnalysis
+  <div className="space-y-6">
+
+    <TokenRiskAnalyzer
+      tokenInput={
+        tokenInput
+      }
+      setTokenInput={
+        setTokenInput
+      }
+      result={
+        tokenAnalysis
+      }
+      onAnalyze={
+        handleTokenAnalysis
+      }
+    />
+
+    {tokenRiskResult && (
+
+      <TokenSecurityCard
+        tokenRiskResult={
+          tokenRiskResult
         }
       />
 
-    ),
+    )}
+
+  </div>
+
+),
 
     contract: (
 

@@ -33,13 +33,13 @@ export default function WalletHealth({
 
           <p
             className={`text-2xl font-bold ${
-              status ===
-              "Healthy"
-                ? "text-green-400"
-                : status ===
-                  "Warning"
-                ? "text-yellow-400"
-                : "text-red-400"
+              status === "Healthy"
+  ? "text-green-400"
+  : status === "Warning"
+  ? "text-yellow-400"
+  : status === "High Risk"
+  ? "text-orange-400"
+  : "text-red-400"
             }`}
           >
             {status}
