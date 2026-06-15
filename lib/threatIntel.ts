@@ -25,6 +25,11 @@ export async function checkWalletThreat(
   await response.json();
 
 
+console.log(
+  "RAW GOPLUS:",
+  JSON.stringify(data, null, 2)
+);
+
 
 return data;
 

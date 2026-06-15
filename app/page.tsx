@@ -281,6 +281,7 @@ export default function Home() {
     setActiveWallet(
       address
     );
+    
   }
 
 }, [address]);
@@ -736,7 +737,10 @@ const result =
     activeWallet
   );
 
-
+console.log(
+  "GOPLUS RESULT:",
+  result
+); 
       
 
       setThreatIntel(
@@ -1754,6 +1758,7 @@ function addWalletToWatchlist() {
 
   setWatchWalletInput("");
 }
+
 async function analyzeWallet() {
 
   if (
@@ -1764,7 +1769,17 @@ async function analyzeWallet() {
   setActiveWallet(
     walletInput
   );
+const { data, error } = await supabase
+  .from("scan_logs")
+  .insert([
+    {
+      wallet: walletInput,
+      threat_level: "ANALYZING",
+    },
+  ]);
 
+console.log("SCAN LOG DATA:", JSON.stringify(data));
+console.log("SCAN LOG ERROR:", JSON.stringify(error));
   const {
     data: statsData
   } = await supabase
@@ -1910,15 +1925,12 @@ useEffect(() => {
 
   async function updateThreatStats() {
 
-    if (!activeWallet) return;
+    console.log(
+      "THREAT PROFILE:",
+      threatProfile.level
+    );
 
-    if (
-      threatProfile.level !== "SUSPICIOUS" &&
-      threatProfile.level !== "HIGH_RISK" &&
-      threatProfile.level !== "MALICIOUS"
-    ) {
-      return;
-    }
+    if (!activeWallet) return;
 
     const { data } = await supabase
       .from("stats")
@@ -1928,10 +1940,15 @@ useEffect(() => {
 
     if (!data) return;
 
-    const updates: any = {
-      threats_detected:
-        (data.threats_detected || 0) + 1,
-    };
+    const updates: any = {};
+
+if (
+  threatProfile.level !== "SAFE"
+) {
+
+  updates.threats_detected =
+    (data.threats_detected || 0) + 1;
+}
 
     if (
       threatProfile.level === "MALICIOUS"
@@ -1939,11 +1956,31 @@ useEffect(() => {
       updates.malicious_wallets =
         (data.malicious_wallets || 0) + 1;
     }
-
+console.log(
+  "UPDATING DB TO:",
+  threatProfile.level
+);
     await supabase
       .from("stats")
       .update(updates)
       .eq("id", 1);
+
+      console.log(
+  "FINAL THREAT LEVEL:",
+  threatProfile.level
+);
+
+await supabase
+  .from("scan_logs")
+  .update({
+    threat_level:
+      threatProfile.level,
+  })
+  .eq(
+    "wallet",
+    activeWallet
+  );
+     
 
     setPlatformStats((prev: any) => ({
       ...prev,
