@@ -1,18 +1,9 @@
-import { checkWalletThreat }
-from "@/lib/threatIntel";
+import { analyzeGoPlus } from "./providers/goplusProvider";
+import { checkWalletThreat } from "@/lib/threatIntel";
+import { analyzeWalletReputation } from "@/lib/walletReputation";
 
-import { analyzeWalletReputation }
-from "@/lib/walletReputation";
-
-import {
-  ThreatAnalysisResult
-}
-from "./types";
-
-import {
-  getThreatLevel
-}
-from "./threatScoring";
+import { ThreatAnalysisResult } from "./types";
+import { getThreatLevel } from "./threatScoring";
 
 export async function analyzeWalletThreat(
   address: string
@@ -23,14 +14,81 @@ export async function analyzeWalletThreat(
   const findings: string[] = [];
 
   const reputation =
-    analyzeWalletReputation(
-      address
-    );
+    analyzeWalletReputation(address);
 
   const goplus =
-    await checkWalletThreat(
-      address
-    );
+  await checkWalletThreat(
+    address
+  );
+
+const result =
+  goplus?.result;
+  const goplusAnalysis =
+  analyzeGoPlus(result);
+
+score +=
+  goplusAnalysis.score;
+
+findings.push(
+  ...goplusAnalysis.findings
+);
+console.log(
+  "PARSED GOPLUS RESULT:",
+  result
+);
+  if (result) {
+
+    if (result.phishing === "1") {
+
+      findings.push(
+        "Known phishing wallet"
+      );
+
+      score += 60;
+
+    }
+
+    if (result.malicious_address === "1") {
+
+      findings.push(
+        "Known malicious wallet"
+      );
+
+      score += 80;
+
+    }
+
+    if (result.sanctioned === "1") {
+
+      findings.push(
+        "Sanctioned wallet"
+      );
+
+      score += 80;
+
+    }
+
+    if (result.mixer === "1") {
+
+      findings.push(
+        "Associated with a mixer"
+      );
+
+      score += 40;
+
+    }
+
+    if (result.drainer === "1") {
+
+      findings.push(
+        "Wallet drainer detected"
+      );
+
+      score += 100;
+
+    }
+
+  }
 
   return {
 
@@ -42,7 +100,8 @@ export async function analyzeWalletThreat(
     findings,
 
     reputation:
-      reputation?.label,
+      reputation?.label
 
   };
+
 }
